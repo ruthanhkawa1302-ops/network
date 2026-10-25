@@ -84,6 +84,102 @@ neighbor 3.3.3.3 next-hop-self
 ```
 eBGP qua loopback cần thêm `ebgp-multihop 2` (hoặc `disable-connected-check`).
 
+### Lab đầy đủ 3 router (eBGP + iBGP, Cisco IOS-XE)
+```
+ AS 65001                 AS 65002
+ [R1]--10.12.0.0/30--[R2]--10.23.0.0/30--[R3]
+  Lo0 1.1.1.1/32      Lo0 2.2.2.2/32     Lo0 3.3.3.3/32
+  LAN 192.0.2.0/24                       LAN 198.51.100.0/24
+        eBGP               iBGP (qua loopback, OSPF làm IGP)
+```
+Địa chỉ: R1 E0/0 = 10.12.0.1, R2 E0/0 = 10.12.0.2, R2 E0/1 = 10.23.0.1, R3 E0/0 = 10.23.0.2. Interface theo Cisco IOL (EVE-NG): `Ethernet0/0`, `Ethernet0/1`...; nếu dùng router IOS-XE thật/CSR thì đổi thành GigabitEthernet. Trong EVE-NG nối R1 Eth0/0 ↔ R2 Eth0/0 và R2 Eth0/1 ↔ R3 Eth0/0.
+
+```
+! ===== R1 (AS 65001) =====
+hostname R1
+interface Loopback0
+ ip address 1.1.1.1 255.255.255.255
+interface Ethernet0/0
+ description to-R2
+ ip address 10.12.0.1 255.255.255.252
+ no shutdown
+! Route "giả lập LAN" để lệnh network có route khớp trong RIB
+ip route 192.0.2.0 255.255.255.0 Null0
+!
+router bgp 65001
+ bgp router-id 1.1.1.1
+ bgp log-neighbor-changes
+ neighbor 10.12.0.2 remote-as 65002
+ neighbor 10.12.0.2 description to-R2
+ address-family ipv4 unicast
+  network 192.0.2.0 mask 255.255.255.0
+  neighbor 10.12.0.2 activate
+
+! ===== R2 (AS 65002) - biên AS, eBGP với R1, iBGP với R3 =====
+hostname R2
+interface Loopback0
+ ip address 2.2.2.2 255.255.255.255
+interface Ethernet0/0
+ description to-R1
+ ip address 10.12.0.2 255.255.255.252
+ no shutdown
+interface Ethernet0/1
+ description to-R3
+ ip address 10.23.0.1 255.255.255.252
+ no shutdown
+!
+! IGP nội bộ AS 65002: chỉ để R2 và R3 thấy loopback của nhau
+router ospf 1
+ router-id 2.2.2.2
+ network 2.2.2.2 0.0.0.0 area 0
+ network 10.23.0.0 0.0.0.3 area 0
+!
+router bgp 65002
+ bgp router-id 2.2.2.2
+ bgp log-neighbor-changes
+ neighbor 10.12.0.1 remote-as 65001
+ neighbor 10.12.0.1 description to-R1
+ neighbor 3.3.3.3 remote-as 65002
+ neighbor 3.3.3.3 description to-R3
+ neighbor 3.3.3.3 update-source Loopback0
+ address-family ipv4 unicast
+  neighbor 10.12.0.1 activate
+  neighbor 3.3.3.3 activate
+  neighbor 3.3.3.3 next-hop-self
+
+! ===== R3 (AS 65002) =====
+hostname R3
+interface Loopback0
+ ip address 3.3.3.3 255.255.255.255
+interface Ethernet0/0
+ description to-R2
+ ip address 10.23.0.2 255.255.255.252
+ no shutdown
+ip route 198.51.100.0 255.255.255.0 Null0
+!
+router ospf 1
+ router-id 3.3.3.3
+ network 3.3.3.3 0.0.0.0 area 0
+ network 10.23.0.0 0.0.0.3 area 0
+!
+router bgp 65002
+ bgp router-id 3.3.3.3
+ bgp log-neighbor-changes
+ neighbor 2.2.2.2 remote-as 65002
+ neighbor 2.2.2.2 description to-R2
+ neighbor 2.2.2.2 update-source Loopback0
+ address-family ipv4 unicast
+  network 198.51.100.0 mask 255.255.255.0
+  neighbor 2.2.2.2 activate
+```
+**Verify**
+```
+R2# show ip bgp summary          ! 2 neighbor (10.12.0.1, 3.3.3.3) có số ở PfxRcd = Established
+R3# show ip bgp                  ! 192.0.2.0/24 next-hop 2.2.2.2 (nhờ next-hop-self), AS_PATH 65001
+R1# show ip bgp                  ! 198.51.100.0/24 next-hop 10.12.0.2, AS_PATH 65002
+```
+Lưu ý: 2 LAN chỉ trỏ Null0 nên chỉ để kiểm tra bảng BGP, không ping được. Muốn test data plane: trên R3 thêm `network 3.3.3.3 mask 255.255.255.255`, rồi `R1# ping 3.3.3.3 source Loopback0` (R3 cũng cần route về 1.1.1.1 — thêm `network 1.1.1.1 mask 255.255.255.255` trên R1). Bỏ `next-hop-self` trên R2 để tái hiện lỗi "inaccessible" ở mục 3.
+
 ## 6. Path Attributes
 Bốn nhóm: 
 - **Well-known mandatory**: ORIGIN, AS_PATH, NEXT_HOP (luôn có).
