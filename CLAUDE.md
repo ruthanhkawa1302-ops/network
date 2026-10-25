@@ -14,6 +14,9 @@ sdwan/03-cheatsheet.md
 vxlan/01-fundamentals.md   VXLAN + EVPN cơ bản
 vxlan/02-advanced.md       VXLAN/EVPN nâng cao
 vxlan/03-cheatsheet.md
+vpn/01-fundamentals.md     VPN/IPsec cơ bản, policy-based vs route-based
+vpn/02-advanced.md         VTI/DMVPN/FlexVPN, interop, MTU, cloud
+vpn/03-cheatsheet.md
 .claude/commands/          Slash command: /explain, /quiz, /lab, /troubleshoot
 ```
 

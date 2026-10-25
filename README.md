@@ -6,6 +6,10 @@
 | BGP | [bgp/01](bgp/01-fundamentals.md) | [bgp/02](bgp/02-advanced.md) | [bgp/03](bgp/03-cheatsheet.md) |
 | SD-WAN | [sdwan/01](sdwan/01-fundamentals.md) | [sdwan/02](sdwan/02-advanced.md) | [sdwan/03](sdwan/03-cheatsheet.md) |
 | VXLAN/EVPN | [vxlan/01](vxlan/01-fundamentals.md) | [vxlan/02](vxlan/02-advanced.md) | [vxlan/03](vxlan/03-cheatsheet.md) |
+| VPN (IPsec: policy-based vs route-based) | [vpn/01](vpn/01-fundamentals.md) | [vpn/02](vpn/02-advanced.md) | [vpn/03](vpn/03-cheatsheet.md) |
+
+## Labs
+- [lab/lab1_VPN_FGT](lab/lab1_VPN_FGT/README.md): FortiGate ⇄ FortiGate site-to-site IPsec route-based (IKEv2, 2 VLAN mỗi site).
 
 ## Lộ trình học đề xuất
 1. **BGP cơ bản** → nắm eBGP/iBGP, path attributes, best-path. (BGP là nền cho cả EVPN lẫn nhiều thiết kế SD-WAN.)
